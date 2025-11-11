@@ -1,0 +1,27 @@
+# Conda environment for building ngspice for Pyodide 0.27.7
+# This ensures we use Python 3.12 so pyodide-build works correctly
+
+name: pyodide-ngspice-builder
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - pip
+  - nodejs
+  - git
+  - cmake
+  - make
+  - gcc
+  - gxx
+  - autoconf
+  - automake
+  - pkg-config
+  - bison
+  - flex
+  - gperf
+  - texinfo
+  - unzip
+  - wget
+  - pip:
+      - pyodide-build

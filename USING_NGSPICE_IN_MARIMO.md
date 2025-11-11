@@ -244,26 +244,31 @@ The build includes patches from Pyodide PR #5601:
 
 ## Rebuilding from Source
 
-To rebuild the library yourself, use the **self-contained build script**:
+We provide **three build methods** - choose the one that works best for your environment:
 
+### 🐳 Option 1: Docker (Recommended)
 ```bash
-# Run the complete build script (sets up everything from scratch)
-./build_ngspice_complete.sh
-
-# Output will be in /tmp/ngspice-pyodide-build/dist/
+./build-with-docker.sh
 ```
+Uses Python 3.12 in Docker to run the official `pyodide build` command. Cleanest and most reproducible.
 
-The script automatically:
-1. Installs libtool 2.5.4 (if not already present)
-2. Clones Pyodide 0.27.7
-3. Installs Emscripten 3.1.58
-4. Applies ngspice package patches from PR #5601
-5. Builds ngspice following the `packages/libngspice/meta.yaml` recipe
-6. Creates the Python wheel package
+### 🐍 Option 2: Conda/Mamba
+```bash
+./build-with-conda.sh
+```
+Uses conda to get Python 3.12, then runs `pyodide build`. Good when Docker isn't available.
 
-**No manual setup required** - the script handles all prerequisites.
+### 📜 Option 3: Manual Script
+```bash
+./build_ngspice_complete.sh
+```
+Self-contained bash script that works anywhere. Follows `meta.yaml` recipe but doesn't use `pyodide build` directly.
 
-See `SUCCESSFUL_BUILD_027.md` for technical details about the build process.
+**See [BUILD_OPTIONS.md](BUILD_OPTIONS.md)** for detailed comparison and instructions for each method.
+
+All methods produce the same output: `libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl`
+
+Technical details: [SUCCESSFUL_BUILD_027.md](SUCCESSFUL_BUILD_027.md)
 
 ## References
 
