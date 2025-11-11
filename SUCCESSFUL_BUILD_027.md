@@ -2,7 +2,13 @@
 
 ## Build Summary
 
-✅ **Successfully built libngspice.so (5.6M)** for Pyodide 0.27.7 compatible with Marimo!
+✅ **Successfully built ngspice for Pyodide 0.27.7** compatible with Marimo!
+
+### Build Outputs
+- **WebAssembly Module:** `libngspice.so` (5.6M)
+- **Python Wheel:** `libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl` (1.8M compressed)
+  - Ready for `micropip.install()` in Marimo
+  - Contains the .so file in proper wheel structure
 
 ### Build Configuration
 - **Pyodide Version:** 0.27.7
@@ -10,6 +16,8 @@
 - **libtool Version:** 2.5.4 (required for wasm32-emscripten support)
 - **ngspice Version:** 44.2
 - **Build Time:** ~8 minutes
+
+📖 **See [USING_NGSPICE_IN_MARIMO.md](USING_NGSPICE_IN_MARIMO.md) for installation and usage instructions**
 
 ### Key Success Factors
 
@@ -95,34 +103,40 @@ echo "✅ Build complete! Output: $DISTDIR/libngspice.so"
 
 ## Using with Marimo
 
-Once you have the built `libngspice.so`, you can use it in Marimo:
+The build script automatically creates a wheel package ready for use in Marimo. See **[USING_NGSPICE_IN_MARIMO.md](USING_NGSPICE_IN_MARIMO.md)** for detailed instructions and examples.
 
-### Option 1: Host and Load
+### Quick Start
 
 ```python
 # In your Marimo notebook
 import micropip
 
-# Host the .so file on a web server and install
-await micropip.install('http://your-server/libngspice.so')
+# Install the wheel (host it locally or on a web server)
+await micropip.install('http://localhost:8000/libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl')
 
-# Test it
-import ctypes
-libngspice = ctypes.CDLL('libngspice.so')
-print("✅ ngspice loaded successfully!")
-```
-
-### Option 2: Load from inspice package
-
-Once your PR #5601 is merged and released, install via inspice:
-
-```python
-import micropip
+# Install InSpice (Python interface to ngspice)
 await micropip.install('inspice')
 
-import inspice
-# Use inspice API for circuit simulation
+# Use it!
+from InSpice.Spice.Netlist import Circuit
+
+circuit = Circuit('Voltage Divider')
+circuit.V('input', 1, circuit.gnd, 10)
+circuit.R(1, 1, 2, '1k')
+circuit.R(2, 2, circuit.gnd, '1k')
+
+simulator = circuit.simulator()
+analysis = simulator.operating_point()
+print(f"Output: {float(analysis['2'])}V")  # Should be 5V
 ```
+
+### Complete Examples
+
+See `examples/marimo_ngspice_example.py` for comprehensive examples including:
+- RC transient analysis
+- AC frequency response (Bode plots)
+- Diode I-V characteristics
+- And more!
 
 ## CI Integration
 
@@ -170,11 +184,13 @@ jobs:
           export PATH="/usr/local/bin:$PATH"
           ./build_ngspice_027.sh
 
-      - name: Upload artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: libngspice-pyodide-027
-          path: /tmp/ngspice-build/dist/libngspice.so
+          path: |
+            /tmp/ngspice-build/dist/libngspice.so
+            /tmp/ngspice-build/dist/libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl
 ```
 
 ## Next Steps
@@ -186,9 +202,11 @@ jobs:
 ## Files Generated
 
 - **Binary:** `/tmp/ngspice-build/dist/libngspice.so` (5.6M)
+- **Wheel:** `/tmp/ngspice-build/dist/libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl` (1.8M)
 - **Headers:** `/tmp/ngspice-build/libs/include/`
-- **Build log:** `/tmp/ngspice_027_build.log`
-- **Build script:** `/tmp/build_ngspice_027.sh`
+- **Build script:** `build_ngspice_027.sh` (in repository)
+- **Usage guide:** `USING_NGSPICE_IN_MARIMO.md`
+- **Examples:** `examples/marimo_ngspice_example.py`
 
 ## Notes
 

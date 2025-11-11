@@ -59,3 +59,69 @@ cp ${WASM_LIBRARY_DIR}/lib/libngspice.so ${DISTDIR}/
 
 echo "Build complete! Output in: $DISTDIR"
 ls -lh $DISTDIR/
+
+# Create wheel package for Marimo/Pyodide
+echo ""
+echo "Creating wheel package..."
+WHEEL_DIR=/tmp/ngspice-wheel
+rm -rf $WHEEL_DIR
+mkdir -p $WHEEL_DIR/libngspice.libs
+mkdir -p $WHEEL_DIR/libngspice-44.2.dist-info
+
+# Copy .so file
+cp $DISTDIR/libngspice.so $WHEEL_DIR/libngspice.libs/
+
+# Create METADATA
+cat > $WHEEL_DIR/libngspice-44.2.dist-info/METADATA <<'EOF'
+Metadata-Version: 2.1
+Name: libngspice
+Version: 44.2
+Summary: Ngspice shared library for Pyodide
+Home-page: http://ngspice.sourceforge.net
+License: BSD-3-Clause
+Platform: pyodide_2024_0_wasm32
+EOF
+
+# Create WHEEL
+cat > $WHEEL_DIR/libngspice-44.2.dist-info/WHEEL <<'EOF'
+Wheel-Version: 1.0
+Generator: build_ngspice_027.sh
+Root-Is-Purelib: false
+Tag: cp312-cp312-pyodide_2024_0_wasm32
+EOF
+
+# Create top_level.txt
+echo "libngspice" > $WHEEL_DIR/libngspice-44.2.dist-info/top_level.txt
+
+# Create RECORD
+cat > $WHEEL_DIR/libngspice-44.2.dist-info/RECORD <<'EOF'
+libngspice.libs/libngspice.so,,
+libngspice-44.2.dist-info/METADATA,,
+libngspice-44.2.dist-info/WHEEL,,
+libngspice-44.2.dist-info/top_level.txt,,
+libngspice-44.2.dist-info/RECORD,,
+EOF
+
+# Create wheel file
+cd $WHEEL_DIR
+python3 -m zipfile -c $DISTDIR/libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl \
+  libngspice.libs/libngspice.so \
+  libngspice-44.2.dist-info/METADATA \
+  libngspice-44.2.dist-info/WHEEL \
+  libngspice-44.2.dist-info/top_level.txt \
+  libngspice-44.2.dist-info/RECORD
+
+echo ""
+echo "✓ Wheel created successfully!"
+ls -lh $DISTDIR/libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl
+
+echo ""
+echo "==================== BUILD SUMMARY ===================="
+echo "WebAssembly module: $DISTDIR/libngspice.so"
+echo "Wheel package:      $DISTDIR/libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl"
+echo ""
+echo "To use in Marimo:"
+echo "  1. Host the wheel: python3 -m http.server 8000 --directory $DISTDIR"
+echo "  2. In Marimo: await micropip.install('http://localhost:8000/libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl')"
+echo "  3. In Marimo: await micropip.install('inspice')"
+echo "======================================================"
