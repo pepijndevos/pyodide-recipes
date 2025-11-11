@@ -8,22 +8,40 @@ We've built `libngspice.so` (the ngspice shared library) as a WebAssembly module
 
 ## Package Files
 
-- **Wheel**: `dist/libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl` (1.8M)
+- **Pre-built Wheel**: `releases/libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl` (1.8M)
   - Contains `libngspice.so` WebAssembly module
   - Compatible with Pyodide 0.27.7 / Emscripten 3.1.58
   - Built with libtool 2.5.4 for wasm32-emscripten support
+  - Ready to use - no build required!
 
-- **Build Script**: `build_ngspice_027.sh`
-  - Reproduces the build locally
+- **Build Script**: `build_ngspice_complete.sh`
+  - **Self-contained** - sets up all prerequisites
+  - Follows the `packages/libngspice/meta.yaml` recipe from pyodide-recipes
   - See `SUCCESSFUL_BUILD_027.md` for details
 
 ## Installation in Marimo
 
-### Option 1: Local File Server (Development)
+### Option 1: From GitHub (Recommended)
+
+**Install directly from this repository:**
+
+```python
+import micropip
+
+# Install libngspice from GitHub
+REPO = "https://github.com/YOUR-USERNAME/pyodide-recipes"
+BRANCH = "claude/check-pyodide-ngspice-build-011CV1tZ6hoEg5itwAYbFAiJ"
+await micropip.install(f'{REPO}/raw/{BRANCH}/releases/libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl')
+
+# Install inspice from PyPI
+await micropip.install('inspice')
+```
+
+### Option 2: Local File Server (Development)
 
 1. **Start a local file server** from the repository root:
    ```bash
-   python3 -m http.server 8000 --directory dist
+   python3 -m http.server 8000 --directory releases
    ```
 
 2. **In your Marimo notebook**, run:
@@ -60,7 +78,7 @@ We've built `libngspice.so` (the ngspice shared library) as a WebAssembly module
    plt.show()
    ```
 
-### Option 2: Hosted Wheel (Production)
+### Option 3: Hosted Wheel (Production)
 
 For production use, host the wheel file on a web server or CDN:
 
@@ -72,9 +90,9 @@ await micropip.install('https://your-domain.com/path/to/libngspice-44.2-cp312-cp
 await micropip.install('inspice')
 ```
 
-### Option 3: GitHub Releases
+### Option 4: GitHub Releases
 
-If you publish a release on GitHub, you can install directly from there:
+If you publish a GitHub release, you can install from there:
 
 ```python
 import micropip
@@ -226,21 +244,26 @@ The build includes patches from Pyodide PR #5601:
 
 ## Rebuilding from Source
 
-To rebuild the library yourself:
+To rebuild the library yourself, use the **self-contained build script**:
 
 ```bash
-# Run the build script
-./build_ngspice_027.sh
+# Run the complete build script (sets up everything from scratch)
+./build_ngspice_complete.sh
 
-# Or follow the detailed instructions in SUCCESSFUL_BUILD_027.md
+# Output will be in /tmp/ngspice-pyodide-build/dist/
 ```
 
-The build process will:
-1. Install libtool 2.5.4
-2. Clone Pyodide 0.27.7
-3. Apply PR #5601 patches
-4. Build ngspice with Emscripten 3.1.58
-5. Output `libngspice.so` to `/tmp/ngspice-build/dist/`
+The script automatically:
+1. Installs libtool 2.5.4 (if not already present)
+2. Clones Pyodide 0.27.7
+3. Installs Emscripten 3.1.58
+4. Applies ngspice package patches from PR #5601
+5. Builds ngspice following the `packages/libngspice/meta.yaml` recipe
+6. Creates the Python wheel package
+
+**No manual setup required** - the script handles all prerequisites.
+
+See `SUCCESSFUL_BUILD_027.md` for technical details about the build process.
 
 ## References
 
