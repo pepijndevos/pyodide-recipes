@@ -1,72 +1,47 @@
-# Docker image for building ngspice for Pyodide 0.27.7
-# This uses Python 3.12 so we can properly use pyodide-build tools
+# Dockerfile for building ngspice wheel for Pyodide
+# Mirrors the pyodide-recipes CI workflow
 
-FROM python:3.12-slim
+FROM condaforge/mambaforge:latest
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    git \
-    wget \
-    curl \
-    autoconf \
-    automake \
-    pkg-config \
-    bison \
-    flex \
-    gperf \
-    texinfo \
-    unzip \
-    cmake \
-    nodejs \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install libtool 2.5.4 (required for wasm32-emscripten support)
-WORKDIR /tmp
-RUN wget -q https://ftp.gnu.org/gnu/libtool/libtool-2.5.4.tar.gz && \
-    tar -xzf libtool-2.5.4.tar.gz && \
-    cd libtool-2.5.4 && \
-    ./configure --prefix=/usr/local && \
-    make -j$(nproc) && \
-    make install && \
-    cd /tmp && \
-    rm -rf libtool-2.5.4*
-
-# Create working directory
 WORKDIR /build
 
-# Clone Pyodide 0.27.7
-RUN git clone --depth 1 --branch 0.27.7 https://github.com/pyodide/pyodide.git
+# Copy the entire pyodide-recipes repository
+COPY . /build/
 
-WORKDIR /build/pyodide
+# Install conda environment from environment.yml
+RUN mamba env update -n base -f environment.yml && \
+    mamba clean -afy
 
-# Install Emscripten 3.1.58
-RUN git clone https://github.com/emscripten-core/emsdk.git && \
-    cd emsdk && \
-    ./emsdk install 3.1.58 && \
-    ./emsdk activate 3.1.58
+# Install pyodide-build from the repo's pyodide-build subdirectory
+RUN python -m pip install ./pyodide-build/ && \
+    pyodide xbuildenv install
 
-# Install pyodide-build (will work with Python 3.12)
-RUN pip install --no-cache-dir pyodide-build
+# Install and patch emscripten (following CI workflow)
+RUN python tools/install_and_patch_emscripten.py
 
-# Apply ngspice patches from PR #5601
-RUN wget -q -O /tmp/ngspice.patch https://patch-diff.githubusercontent.com/raw/pyodide/pyodide/pull/5601.patch && \
-    git apply --reject --whitespace=fix /tmp/ngspice.patch || true && \
-    rm /tmp/ngspice.patch
-
-# Verify ngspice package was added
-RUN test -d packages/ngspice || (echo "ERROR: ngspice package not found" && exit 1)
-
-# Set environment variables for Pyodide build
-ENV PATH="/build/pyodide/emsdk:/build/pyodide/emsdk/upstream/emscripten:/usr/local/bin:${PATH}"
-ENV PYODIDE_ROOT="/build/pyodide"
+# Source emscripten environment
+ENV PATH="/build/emsdk:/build/emsdk/upstream/emscripten:${PATH}"
+ENV EMSDK="/build/emsdk"
 
 # Build script
-COPY docker-build.sh /build/docker-build.sh
-RUN chmod +x /build/docker-build.sh
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "======================================================"\n\
+echo "Building libngspice using pyodide build-recipes"\n\
+echo "======================================================"\n\
+source emsdk/emsdk_env.sh\n\
+mkdir -p repodata build-logs\n\
+pyodide build-recipes libngspice --install --install-dir=./repodata --log-dir=build-logs\n\
+echo ""\n\
+echo "======================================================"\n\
+echo "Build complete!"\n\
+echo "======================================================"\n\
+ls -lh repodata/*.whl\n\
+if [ -d "/output" ]; then\n\
+  cp -v repodata/*.whl /output/\n\
+fi' > /build/build.sh && chmod +x /build/build.sh
 
-# Default command: build ngspice and create wheel
-CMD ["/build/docker-build.sh"]
+CMD ["/build/build.sh"]
 
-# Build outputs will be in /build/pyodide/dist/
+# Build outputs will be in /build/repodata/
 VOLUME ["/output"]

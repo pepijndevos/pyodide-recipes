@@ -1,160 +1,105 @@
-# Using ngspice in Marimo with Pyodide 0.27.7
+# Using ngspice in Marimo with Pyodide
 
-This guide explains how to use the ngspice circuit simulator in Marimo notebooks through the InSpice Python interface.
+This guide explains how to use the ngspice circuit simulator in Marimo notebooks.
 
-## Overview
+## Quick Start - Pre-built Wheel
 
-We've built `libngspice.so` (the ngspice shared library) as a WebAssembly module compatible with Pyodide 0.27.7 (used by Marimo). The library is packaged as a wheel that can be installed alongside the InSpice Python package.
-
-## Package Files
-
-- **Pre-built Wheel**: `releases/libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl` (1.8M)
-  - Contains `libngspice.so` WebAssembly module
-  - Compatible with Pyodide 0.27.7 / Emscripten 3.1.58
-  - Built with libtool 2.5.4 for wasm32-emscripten support
-  - Ready to use - no build required!
-
-- **Build Script**: `build_ngspice_complete.sh`
-  - **Self-contained** - sets up all prerequisites
-  - Follows the `packages/libngspice/meta.yaml` recipe from pyodide-recipes
-  - See `SUCCESSFUL_BUILD_027.md` for details
-
-## Installation in Marimo
-
-### Option 1: From GitHub (Recommended)
-
-**Install directly from this repository:**
+Install the pre-built wheel directly from this repository:
 
 ```python
 import micropip
 
 # Install libngspice from GitHub
-REPO = "https://github.com/YOUR-USERNAME/pyodide-recipes"
+REPO = "https://github.com/pepijndevos/pyodide-recipes"
 BRANCH = "claude/check-pyodide-ngspice-build-011CV1tZ6hoEg5itwAYbFAiJ"
 await micropip.install(f'{REPO}/raw/{BRANCH}/releases/libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl')
 
-# Install inspice from PyPI
+# Install InSpice (Python interface to ngspice)
 await micropip.install('inspice')
+
+# Use it!
+from InSpice.Spice.Netlist import Circuit
+
+circuit = Circuit('Voltage Divider')
+circuit.V('input', 1, circuit.gnd, 10)
+circuit.R(1, 1, 2, '1k')
+circuit.R(2, 2, circuit.gnd, '1k')
+
+simulator = circuit.simulator()
+analysis = simulator.operating_point()
+print(f"Output: {float(analysis['2'])}V")  # Should be 5V
 ```
 
-### Option 2: Local File Server (Development)
+## Building from Source
 
-1. **Start a local file server** from the repository root:
-   ```bash
-   python3 -m http.server 8000 --directory releases
-   ```
+If you want to rebuild the wheel yourself:
 
-2. **In your Marimo notebook**, run:
-   ```python
-   import micropip
-
-   # Install libngspice from local server
-   await micropip.install('http://localhost:8000/libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl')
-
-   # Install inspice from PyPI
-   await micropip.install('inspice')
-   ```
-
-3. **Use ngspice via InSpice**:
-   ```python
-   from InSpice.Spice.Netlist import Circuit
-
-   # Create a simple RC circuit
-   circuit = Circuit('RC Circuit')
-   circuit.V('input', 1, circuit.gnd, 10)
-   circuit.R(1, 1, 2, '1k')
-   circuit.C(1, 2, circuit.gnd, '1uF')
-
-   # Run simulation
-   simulator = circuit.simulator()
-   analysis = simulator.transient(step_time='0.1ms', end_time='10ms')
-
-   # Plot results
-   import matplotlib.pyplot as plt
-   plt.plot(analysis.time.as_ndarray(), analysis['2'].as_ndarray())
-   plt.xlabel('Time (s)')
-   plt.ylabel('Voltage (V)')
-   plt.title('RC Circuit Response')
-   plt.show()
-   ```
-
-### Option 3: Hosted Wheel (Production)
-
-For production use, host the wheel file on a web server or CDN:
-
-```python
-import micropip
-
-# Install from your hosted location
-await micropip.install('https://your-domain.com/path/to/libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl')
-await micropip.install('inspice')
+### Option 1: Docker (Recommended)
+```bash
+./build-with-docker.sh
 ```
 
-### Option 4: GitHub Releases
+Mirrors the pyodide-recipes CI workflow. Uses `pyodide build-recipes` command.
 
-If you publish a GitHub release, you can install from there:
-
-```python
-import micropip
-
-REPO_URL = "https://github.com/YOUR-USERNAME/pyodide-recipes"
-RELEASE_TAG = "v1.0.0"
-WHEEL_NAME = "libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl"
-
-await micropip.install(f'{REPO_URL}/releases/download/{RELEASE_TAG}/{WHEEL_NAME}')
-await micropip.install('inspice')
+### Option 2: Conda/Mamba
+```bash
+./build-with-conda.sh
 ```
+
+Uses conda to set up the environment, then runs `pyodide build-recipes`.
+
+**Requirements:**
+- Docker (Option 1) or Conda/Mamba (Option 2)
+- 10-15 minutes build time
+- Outputs wheel to `dist/`
 
 ## How It Works
 
-1. **InSpice** (fork of PySpice) is a pure Python package that provides a high-level interface to ngspice
-2. **InSpice uses CFFI** to dynamically load `libngspice.so` at runtime via `ffi.dlopen()`
-3. **InSpice has Pyodide support** - it checks for `ConfigInstall.OS.on_web` and looks for `libngspice{}.so`
-4. **The wheel structure** places `libngspice.so` in `libngspice.libs/` directory, which is the standard location for shared libraries in Python wheels
-5. **micropip.install()** extracts the wheel and makes the library available to InSpice
+1. **libngspice** is a shared library (WebAssembly .so file) built for Pyodide
+2. **InSpice** (pure Python package) uses CFFI to load libngspice dynamically
+3. **InSpice has Pyodide support** - automatically detects web environment
+4. The wheel packages the .so file in `libngspice.libs/` directory
 
-## Library Loading
+## Example Circuits
 
-InSpice finds the library through:
-1. **Environment variable**: `NGSPICE_LIBRARY_PATH` (if set)
-2. **ctypes.util.find_library()**: Searches standard locations including `site-packages/libngspice.libs/`
-3. **Platform detection**: Automatically detects Pyodide environment
+See [examples/marimo_ngspice_example.py](examples/marimo_ngspice_example.py) for:
+- Voltage divider
+- RC transient analysis
+- AC frequency response (Bode plots)
+- Diode I-V characteristics
+
+## Technical Details
+
+- **ngspice version:** 44.2
+- **Pyodide version:** 0.27.7  
+- **Emscripten version:** 3.1.58
+- **Wheel platform:** `pyodide_2024_0_wasm32`
+- **WebAssembly module:** 5.6M uncompressed, 1.8M in wheel
+
+### Wheel Structure
+
+```
+libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl
+├── libngspice.libs/
+│   └── libngspice.so          # WebAssembly shared library
+└── libngspice-44.2.dist-info/
+    ├── METADATA
+    ├── WHEEL
+    ├── top_level.txt
+    └── RECORD
+```
 
 ## Troubleshooting
 
 ### Library Not Found
 
-If InSpice can't find the library, you can explicitly set the path:
+If InSpice can't find the library:
 
 ```python
 import os
 os.environ['NGSPICE_LIBRARY_PATH'] = '/lib/python3.12/site-packages/libngspice.libs/libngspice.so'
 
 from InSpice.Spice.Netlist import Circuit
-# ... your code
-```
-
-### Check Installation
-
-Verify the library is installed:
-
-```python
-import importlib.util
-import os
-
-# Check if inspice is installed
-if importlib.util.find_spec('InSpice'):
-    print("✓ InSpice installed")
-
-# Check if libngspice.so exists
-lib_path = '/lib/python3.12/site-packages/libngspice.libs/libngspice.so'
-if os.path.exists(lib_path):
-    print(f"✓ libngspice.so found at {lib_path}")
-    import subprocess
-    result = subprocess.run(['file', lib_path], capture_output=True, text=True)
-    print(f"  {result.stdout.strip()}")
-else:
-    print(f"✗ libngspice.so not found at {lib_path}")
 ```
 
 ### Enable Debug Logging
@@ -167,116 +112,12 @@ from InSpice.Spice.NgSpice.Shared import NgSpiceShared
 # This will show library loading details
 ```
 
-## Example Circuits
-
-### Voltage Divider
-
-```python
-from InSpice.Spice.Netlist import Circuit
-
-circuit = Circuit('Voltage Divider')
-circuit.V('input', 1, circuit.gnd, 10)
-circuit.R(1, 1, 2, '1k')
-circuit.R(2, 2, circuit.gnd, '1k')
-
-simulator = circuit.simulator()
-analysis = simulator.operating_point()
-
-print(f"Output voltage: {float(analysis['2'])} V")
-```
-
-### RC Low-Pass Filter
-
-```python
-from InSpice.Spice.Netlist import Circuit
-import numpy as np
-
-circuit = Circuit('RC Low-Pass Filter')
-circuit.V('input', 1, circuit.gnd, 'AC 1')
-circuit.R(1, 1, 2, '1k')
-circuit.C(1, 2, circuit.gnd, '100nF')
-
-simulator = circuit.simulator()
-analysis = simulator.ac(
-    start_frequency=10,
-    stop_frequency=100e3,
-    number_of_points=100,
-    variation='dec'
-)
-
-# Calculate -3dB point
-magnitude = np.abs(analysis['2'].as_ndarray())
-frequencies = analysis.frequency.as_ndarray()
-cutoff_idx = np.argmin(np.abs(magnitude - 1/np.sqrt(2)))
-print(f"Cutoff frequency: {frequencies[cutoff_idx]:.1f} Hz")
-```
-
-## Technical Details
-
-### Build Configuration
-
-- **ngspice version**: 44.2
-- **Pyodide version**: 0.27.7
-- **Emscripten version**: 3.1.58
-- **libtool version**: 2.5.4 (required for wasm32-emscripten)
-- **Build flags**:
-  - `SIDE_MODULE_CFLAGS="-O2 -g0 -fPIC"`
-  - `SIDE_MODULE_LDFLAGS="-O2 -g0 -s WASM_BIGINT -s SIDE_MODULE=1"`
-
-### Wheel Structure
-
-```
-libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl
-├── libngspice.libs/
-│   └── libngspice.so          # WebAssembly shared library (5.6M uncompressed)
-└── libngspice-44.2.dist-info/
-    ├── METADATA               # Package metadata
-    ├── WHEEL                  # Wheel specification
-    ├── top_level.txt          # Top-level package name
-    └── RECORD                 # File checksums
-```
-
-### Applied Patches
-
-The build includes patches from Pyodide PR #5601:
-1. **0001-keep-alive-API-functions.patch**: Ensures API functions aren't optimized away by the linker
-2. **0001-no-hicum2.patch**: Disables HICUM2 model for compatibility
-
-## Rebuilding from Source
-
-We provide **three build methods** - choose the one that works best for your environment:
-
-### 🐳 Option 1: Docker (Recommended)
-```bash
-./build-with-docker.sh
-```
-Uses Python 3.12 in Docker to run the official `pyodide build` command. Cleanest and most reproducible.
-
-### 🐍 Option 2: Conda/Mamba
-```bash
-./build-with-conda.sh
-```
-Uses conda to get Python 3.12, then runs `pyodide build`. Good when Docker isn't available.
-
-### 📜 Option 3: Manual Script
-```bash
-./build_ngspice_complete.sh
-```
-Self-contained bash script that works anywhere. Follows `meta.yaml` recipe but doesn't use `pyodide build` directly.
-
-**See [BUILD_OPTIONS.md](BUILD_OPTIONS.md)** for detailed comparison and instructions for each method.
-
-All methods produce the same output: `libngspice-44.2-cp312-cp312-pyodide_2024_0_wasm32.whl`
-
-Technical details: [SUCCESSFUL_BUILD_027.md](SUCCESSFUL_BUILD_027.md)
-
 ## References
 
-- [Pyodide 0.27.7 Documentation](https://pyodide.org/en/0.27.7/)
 - [InSpice on PyPI](https://pypi.org/project/inspice/)
 - [ngspice Documentation](http://ngspice.sourceforge.net/docs.html)
 - [Marimo Documentation](https://docs.marimo.io/)
-- [Pyodide PR #5601](https://github.com/pyodide/pyodide/pull/5601) - Original ngspice patch
+- [Pyodide Documentation](https://pyodide.org/)
 
 ## License
 
