@@ -1,0 +1,26 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Claude <claude@anthropic.com>
+Date: Fri, 15 Nov 2025 15:35:00 +0000
+Subject: [PATCH] Fix time function detection for Emscripten
+
+Emscripten does not support Windows QueryPerformanceCounter.
+Exclude it when building for Emscripten to fall back to gettimeofday.
+---
+ src/misc/misc_time.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/misc/misc_time.c b/src/misc/misc_time.c
+index 2199cd562..c67dd8250 100644
+--- a/src/misc/misc_time.c
++++ b/src/misc/misc_time.c
+@@ -110,7 +110,7 @@ seconds(void)
+ #ifdef USE_OMP
+     // Usage of OpenMP time function
+     return(omp_get_wtime() - timebegin.secs);
+-#elif defined(HAVE_QUERYPERFORMANCECOUNTER)
++#elif defined(HAVE_QUERYPERFORMANCECOUNTER) && !defined(__EMSCRIPTEN__)
+     // Windows (MSC and mingw) specific implementation
+     LARGE_INTEGER frequency, counter;
+     QueryPerformanceFrequency(&frequency);
+--
+2.49.0

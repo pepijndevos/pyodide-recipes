@@ -10,6 +10,7 @@ source:
   patches:
     - patches/0001-keep-alive-API-functions.patch
     - patches/0001-no-hicum2.patch
+    - patches/0002-fix-emscripten-time-functions.patch
 
 build:
   type: shared_library
@@ -29,8 +30,10 @@ build:
     )
 
     mkdir release-lib && cd release-lib
-    emconfigure ../configure "${configure_args[@]}" CFLAGS="${SIDE_MODULE_CFLAGS}"
-    emmake make -j ${PYODIDE_JOBS:-3} LDFLAGS="${SIDE_MODULE_LDFLAGS}"
+    emconfigure ../configure "${configure_args[@]}" \
+        CFLAGS="${SIDE_MODULE_CFLAGS}" \
+        LDFLAGS="${SIDE_MODULE_LDFLAGS} -sWASM_BIGINT"
+    emmake make -j ${PYODIDE_JOBS:-3}
     emmake make install
     cp ${WASM_LIBRARY_DIR}/lib/libngspice.so ${DISTDIR}
 
