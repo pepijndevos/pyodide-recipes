@@ -32,7 +32,7 @@ build:
     mkdir release-lib && cd release-lib
     emconfigure ../configure "${configure_args[@]}" \
         CFLAGS="${SIDE_MODULE_CFLAGS}" \
-        LDFLAGS="${SIDE_MODULE_LDFLAGS} -sWASM_BIGINT"
+        LDFLAGS="${SIDE_MODULE_LDFLAGS}"
     emmake make -j ${PYODIDE_JOBS:-3}
     emmake make install
     cp ${WASM_LIBRARY_DIR}/lib/libngspice.so ${DISTDIR}
