@@ -19,7 +19,7 @@ build:
 
     configure_args=(
       --prefix=${WASM_LIBRARY_DIR}
-      --enable-xspice
+      --disable-xspice  # requires flex which is not available
       --disable-debug
       --disable-dependency-tracking
       --enable-cider
