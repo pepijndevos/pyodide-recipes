@@ -15,6 +15,9 @@ source:
 build:
   type: shared_library
   script: |
+    # Skip verilog module due to libtool incompatibility with Emscripten
+    sed -i 's/SUBDIRS = mif cm enh evt ipc idn cmpp icm verilog/SUBDIRS = mif cm enh evt ipc idn cmpp icm/' src/xspice/Makefile.am
+
     bash ./autogen.sh
 
     configure_args=(
