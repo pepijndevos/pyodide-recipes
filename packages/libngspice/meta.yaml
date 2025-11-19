@@ -10,6 +10,7 @@ source:
   patches:
     - patches/0001-keep-alive-API-functions.patch
     - patches/0001-no-hicum2.patch
+    - patches/0002-fix-xspice-cmpp-path.patch
 
 build:
   type: shared_library

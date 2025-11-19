@@ -1,0 +1,33 @@
+From 14eba6441c4b8c24ae50fac114667f8bbc39c31b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 19 Nov 2025 10:37:06 +0000
+Subject: [PATCH] Fix xspice cmpp path for cross-compilation
+
+---
+ src/xspice/icm/GNUmakefile.in | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/xspice/icm/GNUmakefile.in b/src/xspice/icm/GNUmakefile.in
+index e1344da..9ffe5bb 100644
+--- a/src/xspice/icm/GNUmakefile.in
++++ b/src/xspice/icm/GNUmakefile.in
+@@ -52,12 +52,12 @@ dstring.o: $(NGSRCDIR)/misc/dstring.c $(NGSRCDIR)/include/ngspice/dstring.h
+ ifdef cm
+ 
+ ifeq ($(OS),Windows_NT)
+-    cmpp = ../cmpp/cmpp.exe
++    cmpp = $(CMPP)
+ else
+-    cmpp = ../cmpp/cmpp
++    cmpp = $(CMPP)
+ endif
+-modlst := $(shell $(cmpp) -p $(srcdir)/$(cm)/modpath.lst)
+-udnlst := $(shell $(cmpp) -p $(srcdir)/$(cm)/udnpath.lst)
++modlst := $(shell $(CMPP) -p $(srcdir)/$(cm)/modpath.lst)
++udnlst := $(shell $(CMPP) -p $(srcdir)/$(cm)/udnpath.lst)
+ 
+ cm-dirs := $(cm) $(udnlst:%=$(cm)/%) $(modlst:%=$(cm)/%)
+ cm-dep-dirs := $(cm-dirs:%=%/.deps)
+-- 
+2.43.0
+
