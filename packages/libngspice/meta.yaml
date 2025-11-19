@@ -40,8 +40,8 @@ build:
     # Fix libtool to enable shared library building with Emscripten
     sed -i 's/^build_libtool_libs=no$/build_libtool_libs=yes/g' libtool
 
-    emmake make -j ${PYODIDE_JOBS:-3} LDFLAGS="${SIDE_MODULE_LDFLAGS}"
-    emmake make install
+    emmake make -j ${PYODIDE_JOBS:-3} LDFLAGS="${SIDE_MODULE_LDFLAGS}" LIBS=""
+    emmake make install LIBS=""
     cp ${WASM_LIBRARY_DIR}/lib/libngspice.so ${DISTDIR}
 
 about:
